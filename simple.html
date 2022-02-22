@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          crossorigin="anonymous">
+</head>
+<body>
+<!-- a place to record messages -->
+<div id="messages" class="container"></div>
+<!-- load a script -->
+<script type="module">
+  import { connect, StringCodec, JSONCodec } from '../nats.js'
+
+  // add an entry to the document
+  function addEntry(s) {
+    const p = document.createElement("pre");
+    p.appendChild(document.createTextNode(s));
+    document.getElementById("messages").appendChild(p);
+  }
+
+  const sc = StringCodec();
+  const jc = JSONCodec();
+  
+  const init = async function () {
+    // create a connection
+    const nc = await connect({
+      servers: 'ws://localhost:9222',
+      user: "business",
+      pass: "Cu62tab3ubqv1a1IEB6c8l",
+    })
+    addEntry('connected to NATS!');
+
+    window.nc = nc;
+
+    // simple publisher
+    nc.publish('hello', sc.encode('nats'));
+    addEntry('published a message to `hello`');
+
+    const scanSub = await nc.subscribe('qwerty1.Scanner.Barcode');
+    (async () => {
+      addEntry('listening for request on `qwerty1.Scanner.Barcode`');
+      for await (const m of scanSub) {
+        addEntry(`Received from qwerty1.Scanner.Barcode ${JSON.stringify(jc.decode(m.data))}`);
+      }
+    })().then(console.log).catch(console.log);
+
+    const scannedData = Uint8Array.from({
+      type: '2of5-int',
+      barcode: '10100063699368',
+    });
+    // nc.publish('Scanner.Control', jc.encode(scannedData));
+    // addEntry('published a message to `Scanner.Control`');
+    nc.publish('qwerty1.Scanner.Barcode', jc.encode(scannedData));
+    addEntry('published a message to `qwerty1.Scanner.Barcode`');
+
+    // simple subscriber, if the message has a reply subject
+    // send a reply
+    const sub = await nc.subscribe('help');
+    (async () => {
+      addEntry('listening for request on `help`');
+      for await (const m of sub) {
+        m.respond(sc.encode(`I can help ${sc.decode(m.data)}`));
+      }
+    })().then()
+
+    // const scanSub2 = await nc.subscribe('Scanner.Control');
+    // (async () => {
+    //   addEntry('listening for request on `Scanner.Control`');
+    //   for await (const m of scanSub2) {
+    //     addEntry(`Received from Scanner.Control ${m.data}`);
+    //   }
+    // })().then(console.log).catch(console.log);
+
+    // request data - requests only receive one message
+    // to receive multiple messages, create a subscription
+    addEntry('making a request to `help`');
+    const msg = await nc.request('help', sc.encode('nats request'))
+
+    // addEntry('making a request to `Scanner.Control`');
+    // const msg2 = await nc.request('Scanner.Control', jc.encode(scannedData))
+
+    addEntry(`got response '${sc.decode(msg.data)}'`);
+
+    // debugger
+    // addEntry(`got response '${msg2.data}'`);
+
+    // close the connection
+    nc.close();
+    addEntry('closed the connection');
+  }
+  init();
+</script>
+</body>
+</html>
