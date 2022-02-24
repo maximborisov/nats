@@ -116,6 +116,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "nats.ws": "^1.7.0"
+    "nats.ws": "^1.7.0",
+    "uuid": "^8.3.2"
   }
 }

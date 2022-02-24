@@ -11,7 +11,7 @@
 <div id="messages" class="container"></div>
 <!-- load a script -->
 <script type="module">
-  import { connect, StringCodec, JSONCodec } from '../nats.js'
+  import { connect, StringCodec, JSONCodec } from './nats.js'
 
   // add an entry to the document
   function addEntry(s) {
@@ -38,22 +38,58 @@
     nc.publish('hello', sc.encode('nats'));
     addEntry('published a message to `hello`');
 
-    const scanSub = await nc.subscribe('qwerty1.Scanner.Barcode');
+    const scanSub0 = await nc.subscribe('localhost.*');
     (async () => {
-      addEntry('listening for request on `qwerty1.Scanner.Barcode`');
-      for await (const m of scanSub) {
-        addEntry(`Received from qwerty1.Scanner.Barcode ${JSON.stringify(jc.decode(m.data))}`);
+      addEntry('listening for request on `localhost.*`');
+      for await (const m of scanSub0) {
+        addEntry(`Received from localhost.* ${JSON.stringify(jc.decode(m.data))}`);
       }
-    })().then(console.log).catch(console.log);
+    })().then(msg => console.log('Then from localhost.*', msg)).catch(console.error);
+
+
+    const scanSub = await nc.subscribe('localhost.Scanner.Barcode');
+    (async () => {
+      addEntry('listening for request on `localhost.Scanner.Barcode`');
+      for await (const m of scanSub) {
+        addEntry(`Received from localhost.Scanner.Barcode ${JSON.stringify(jc.decode(m.data))}`);
+      }
+    })().then(msg => console.log('Then from localhost.Scanner.Barcode', msg)).catch(console.error);
+
+// "recipient":
+//  {
+//  "host_name": "localhost"
+//  },
 
     const scannedData = Uint8Array.from({
+ type: 5100,
+ saga: 
+ {
+ id: '96d5929a-5dcb-432f-9c52-cb106af1068f',
+ event_id: '153affd3-3911-4193-8956-d39b6fe549ad'
+ },
+ version: 
+ {
+ service: '1.0.0',
+ platform: '1.2.4',
+ format: '1.0.1'
+ },
+ info: 
+ {
+ creator: 'priem_localhost',
+ creation_dt: '2022-02-24T18:30:47.6252176+03:00',
+ store_id: '140010',
+ host_name: 'localhost'
+ },
+ content: {
       type: '2of5-int',
       barcode: '10100063699368',
-    });
-    // nc.publish('Scanner.Control', jc.encode(scannedData));
-    // addEntry('published a message to `Scanner.Control`');
-    nc.publish('qwerty1.Scanner.Barcode', jc.encode(scannedData));
-    addEntry('published a message to `qwerty1.Scanner.Barcode`');
+    }
+});
+
+    nc.publish('Scanner.Control', jc.encode(scannedData));
+    addEntry('published a message to `Scanner.Control`');
+    // nc.publish('localhost.Scanner.Barcode', jc.encode(scannedData));
+    // addEntry('published a message to `localhost.Scanner.Barcode`');
 
     // simple subscriber, if the message has a reply subject
     // send a reply
@@ -87,8 +123,8 @@
     // addEntry(`got response '${msg2.data}'`);
 
     // close the connection
-    nc.close();
-    addEntry('closed the connection');
+    // nc.close();
+    // addEntry('closed the connection');
   }
   init();
 </script>
